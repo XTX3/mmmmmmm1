@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>نظام تسجيل المبيعات - Firebase</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700&display=swap">
+  <style>
+    :root{
+      --bg:#f3f6fb; --card:#fff; --accent:#2563eb; --muted:#6b7280; --danger:#e11d48; --success:#16a34a;
+    }
+    *{box-sizing:border-box}
+    body{
+      font-family:'Cairo','Segoe UI',Arial, sans-serif;
+      background:linear-gradient(135deg,#e3ebfa 0%,#dbeafe 100%);
+      margin:0;padding:20px;min-height:100vh
+    }
+    .container{max-width:980px;margin:0 auto}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    header h1{margin:0;font-size:22px;letter-spacing:.5px;color:#2563eb;text-shadow:0 2px 6px #e0e7ff}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .card{
+      background:var(--card);
+      border-radius:16px;
+      padding:24px;
+      box-shadow:0 8px 24px rgba(30,64,175,0.10);
+      margin-top:18px;
+      transition:transform .18s,box-shadow .18s;
+    }
+    .card:hover{
+      transform:scale(1.01) translateY(-3px);
+      box-shadow:0 18px 44px rgba(37,99,235,0.07);
+    }
+    button{
+      background:linear-gradient(90deg, #2563eb, #5b21b6);
+      color:#fff;padding:12px 16px;border-radius:10px;border:0;cursor:pointer;
+      font-weight:600;font-size:16px;transition:background .2s;
+      box-shadow:0 2px 8px rgba(37,99,235,.09);
+    }
+    button:hover{
+      background:linear-gradient(90deg,#1e40af,#831843);
+    }
+    .btn-ghost{
+      background:transparent;
+      border:1px solid #e5e7eb;
+      color:var(--muted);
+      box-shadow:none;
+      transition:color .15s,border .15s;
+    }
+    .btn-ghost:hover{
+      color:#2563eb;
+      border:1.5px solid #2563eb;
+    }
+    .danger{background:var(--danger)}
+    label{display:block;margin:8px 0 6px;color:var(--muted);font-size:14px}
+    input,select,textarea{
+      width:100%;padding:12px;border-radius:10px;
+      border:1px solid #e6eef9;font-size:15px;
+      background:#f7fafc;
+      transition:border-color .2s;
+    }
+    input:focus,select:focus,textarea:focus{outline:none;border-color:#2563eb}
+    .center{text-align:center}
+    .small{font-size:13px;color:var(--muted)}
+    .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .items-list{margin-top:12px}
+    .item{
+      display:flex;align-items:center;gap:16px;
+      padding:12px 10px;border-radius:8px;
+      border:1.1px solid #eef2ff;
+      background:#f5f8ff
+    }
+    .badge{padding:6px 12px;border-radius:999px;font-size:13px}
+    .verified{
+      background:rgba(34,197,94,0.09);
+      color:var(--success);
+      border:1px solid rgba(34,197,94,0.16)
+    }
+    .unverified{
+      background:rgba(245,158,11,0.08);
+      color:#b45309;
+      border:1px solid rgba(245,158,11,0.14)
+    }
+    /* modal */
+    .modal-back{
+      position:fixed;inset:0;background:rgba(2,6,23,0.45);
+      display:flex;align-items:center;justify-content:center;z-index:90
+    }
+    .modal{
+      width:100%;max-width:520px;background:var(--card);padding:22px;
+      border-radius:18px;
+      box-shadow:0 16px 50px rgba(2,6,23,0.28)
+    }
+    .close{
+      background:transparent;border:0;font-size:22px;cursor:pointer;color:var(--muted)
+    }
+    .tick-modal{
+      position:fixed;left:50%;top:30%;transform:translate(-50%,-50%);
+      z-index:100;display:none
+    }
+    .tick{
+      width:160px;height:160px;border-radius:20px;background:#fff;
+      display:flex;align-items:center;justify-content:center;flex-direction:column;
+      box-shadow:0 20px 50px rgba(2,6,23,0.16)
+    }
+    .circle{
+      width:80px;height:80px;border-radius:50%;background:var(--success);
+      display:flex;align-items:center;justify-content:center;transform:scale(.7);
+      animation:pop .4s linear both
+    }
+    .circle svg{width:44px;height:44px;fill:none;stroke:#fff;stroke-width:6;
+      stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:100;
+      stroke-dashoffset:100;animation:dash .6s ease .15s forwards}
+    @keyframes dash{to{stroke-dashoffset:0}}
+    @keyframes pop{to{transform:scale(1)}}
+    @media (max-width:720px){
+      .grid3{grid-template-columns:1fr}
+      header{flex-direction:column;align-items:flex-start}
+      .card{padding:16px}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>نظام تسجيل المبيعات</h1>
+      <div id="user-info" class="small"></div>
+    </header>
+
+    <!-- أزرار الأقسام الرئيسية (بدون زر الإحصائيات) -->
+    <div id="main-actions" class="card grid3 center" style="align-items:center">
+      <div>
+        <h3>تسجيل المبيعات</h3>
+        <p class="small">إدخال مبيعة جديدة (يُطلب تسجيل دخول خاص بالقسم).</p>
+        <button id="btn-open-sales">افتح تسجيل المبيعات</button>
+      </div>
+      <div>
+        <h3>التحقق من الهواتف المباعة</h3>
+        <p class="small">قائمة لتدقيق وموافقة المبيعات (يُطلب تسجيل دخول خاص بالتحقق).</p>
+        <button id="btn-open-verify">افتح التحقق</button>
+      </div>
+    </div>
+
+    <!-- لوحة المبيعات -->
+    <div id="sales-panel" class="card" style="display:none">
+      <h3>تسجيل مبيعة جديدة</h3>
+      <div class="small">البريد المصرح: <strong id="sales-email-show"></strong></div>
+      <label>اسم الهاتف</label><input id="sale-name" placeholder="مثال: Redmi NOTE 13 PRO" />
+      <label>الرام</label><input id="sale-ram" placeholder="مثال: 8GB" />
+      <label>السعر (رقم)</label><input id="sale-price" placeholder="مثال: 250" type="number" />
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <button id="btn-sale-submit">تم البيع</button>
+        <button id="btn-sales-logout" class="btn-ghost">تسجيل خروج</button>
+      </div>
+    </div>
+
+    <!-- لوحة التحقق (مع شريط الإحصائيات أعلى اللوحة) -->
+    <div id="verify-panel" class="card" style="display:none">
+      <h3>قائمة المبيعات (للمراجع)</h3>
+      <div class="small">البريد المصرح: <strong id="verify-email-show"></strong></div>
+      <div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap" id="verify-stats-bar">
+        <div style="flex:1;min-width:160px;background:#e0e7ff;border-radius:10px;padding:12px 15px">
+          <span class="small">إجمالي الأجهزة المعتمدة:</span>
+          <div id="verify-stat-count" style="font-size:18px;font-weight:700">0</div>
+        </div>
+        <div style="flex:1;min-width:160px;background:#d1fae5;border-radius:10px;padding:12px 15px">
+          <span class="small">إجمالي المبالغ:</span>
+          <div id="verify-stat-sum" style="font-size:18px;font-weight:700">0</div>
+        </div>
+      </div>
+      <div id="verify-list" class="items-list"></div>
+      <div style="margin-top:10px">
+        <button id="btn-verify-logout" class="btn-ghost">تسجيل خروج</button>
+      </div>
+    </div>
+
+    <footer class="small center card" style="margin-top:18px">
+      ملاحظة: قم باستبدال إعدادات Firebase داخل الكود، وأنشئ المستخدمين (البريد/كلمة السر) أو استخدم زر التسجيل أدناه.
+    </footer>
+  </div>
+
+  <!-- Modal تسجيل الدخول (للقسم المختار) -->
+  <div id="modal-login" style="display:none" class="modal-back">
+    <div class="modal">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3 id="modal-title">تسجيل الدخول</h3>
+        <button class="close" id="modal-close">&times;</button>
+      </div>
+      <div style="margin-top:10px">
+        <label>البريد (غير قابل للتعديل للقسم المحدد)</label>
+        <input id="modal-email" readonly />
+        <label>كلمة المرور</label>
+        <input id="modal-password" type="password" placeholder="أدخل كلمة المرور" />
+        <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+          <button id="modal-login-btn">تسجيل دخول</button>
+          <button id="modal-register-btn" class="btn-ghost">انشئ الحساب (في حال لم يكن موجوداً)</button>
+        </div>
+        <div id="modal-note" class="small" style="margin-top:8px;color:var(--muted)"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal نجاح (تأثير علامة الصح) -->
+  <div id="tick-modal" class="tick-modal">
+    <div class="tick">
+      <div class="circle">
+        <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <div style="margin-top:10px;font-weight:700">تمت العملية بنجاح</div>
+    </div>
+  </div>
+
+  <script type="module">
+    // بيانات Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyD0SJjm-Rwfr_n1pdMHoky5_r2ryj1-iDY",
+      authDomain: "ww21-2af16.firebaseapp.com",
+      projectId: "ww21-2af16",
+      storageBucket: "ww21-2af16.firebasestorage.app",
+      messagingSenderId: "272932964244",
+      appId: "1:272932964244:web:27928d9c575af9b0393181",
+      measurementId: "G-WVVFBWXP3Y"
+    };
+
+    // بيانات الدخول لكل قسم
+    const SALES_EMAIL = "xxzz12@gmail.com";
+    const VERIFY_EMAIL = "verify@example.com";
+
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+    import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // DOM refs
+    const mainActions = document.getElementById('main-actions');
+    const btnOpenSales = document.getElementById('btn-open-sales');
+    const btnOpenVerify = document.getElementById('btn-open-verify');
+    const modal = document.getElementById('modal-login');
+    const modalTitle = document.getElementById('modal-title');
+    const modalEmail = document.getElementById('modal-email');
+    const modalPassword = document.getElementById('modal-password');
+    const modalLoginBtn = document.getElementById('modal-login-btn');
+    const modalRegisterBtn = document.getElementById('modal-register-btn');
+    const modalClose = document.getElementById('modal-close');
+    const modalNote = document.getElementById('modal-note');
+    const userInfo = document.getElementById('user-info');
+    const salesPanel = document.getElementById('sales-panel');
+    const verifyPanel = document.getElementById('verify-panel');
+    const salesEmailShow = document.getElementById('sales-email-show');
+    const verifyEmailShow = document.getElementById('verify-email-show');
+    const saleName = document.getElementById('sale-name');
+    const saleRam = document.getElementById('sale-ram');
+    const salePrice = document.getElementById('sale-price');
+    const btnSaleSubmit = document.getElementById('btn-sale-submit');
+    const btnSalesLogout = document.getElementById('btn-sales-logout');
+    const verifyList = document.getElementById('verify-list');
+    const btnVerifyLogout = document.getElementById('btn-verify-logout');
+    const tickModal = document.getElementById('tick-modal');
+    // احصائيات في لوحة التحقق فقط
+    const verifyStatCount = document.getElementById('verify-stat-count');
+    const verifyStatSum = document.getElementById('verify-stat-sum');
+
+    let currentSection = null;
+    let unsubscribeSalesList = null;
+
+    function openLoginModalFor(section){
+      currentSection = section;
+      modal.style.display = 'flex';
+      modalPassword.value = '';
+      modalNote.textContent = '';
+      if(section === 'sales'){
+        modalTitle.textContent = 'تسجيل دخول - قسم المبيعات';
+        modalEmail.value = SALES_EMAIL;
+      } else if(section === 'verify'){
+        modalTitle.textContent = 'تسجيل دخول - قسم التحقق';
+        modalEmail.value = VERIFY_EMAIL;
+      }
+    }
+    btnOpenSales.addEventListener('click', ()=> openLoginModalFor('sales'));
+    btnOpenVerify.addEventListener('click', ()=> openLoginModalFor('verify'));
+    modalClose.addEventListener('click', ()=> { modal.style.display='none'; currentSection=null; });
+
+    // تسجيل دخول
+    modalLoginBtn.addEventListener('click', async ()=>{
+      const email = modalEmail.value.trim();
+      const pass = modalPassword.value;
+      if(!email || !pass){ modalNote.textContent = 'أدخل كلمة المرور.'; return; }
+      try{
+        await signInWithEmailAndPassword(auth, email, pass);
+        modal.style.display = 'none';
+      }catch(err){
+        console.error(err);
+        modalNote.textContent = 'خطأ في تسجيل الدخول: '+(err.message || err.code);
+      }
+    });
+
+    // تسجيل (إنشاء مستخدم) مع تسجيل الدخول مباشرة
+    modalRegisterBtn.addEventListener('click', async ()=>{
+      const email = modalEmail.value.trim();
+      const pass = modalPassword.value;
+      if(!email || !pass){ modalNote.textContent = 'أدخل كلمة المرور لإنشاء الحساب.'; return; }
+      try{
+        await createUserWithEmailAndPassword(auth, email, pass);
+        await signInWithEmailAndPassword(auth, email, pass);
+      }catch(err){
+        console.error(err);
+        modalNote.textContent = 'خطأ في الإنشاء: '+(err.message||err.code);
+      }
+    });
+
+    // مراقبة المصادقة
+    onAuthStateChanged(auth, async user => {
+      if(user){
+        userInfo.innerHTML = `مستخدم مسجل: <strong>${user.email}</strong>`;
+        const email = user.email || '';
+        if(!currentSection){
+          await signOut(auth);
+          userInfo.innerHTML = '';
+          alert('يجب الدخول من زر القسم المناسب.');
+          return;
+        }
+        const allowedEmail = (currentSection === 'sales') ? SALES_EMAIL : VERIFY_EMAIL;
+        if(email.toLowerCase() !== allowedEmail.toLowerCase()){
+          await signOut(auth);
+          userInfo.innerHTML = '';
+          alert('هذا الحساب غير مصرح لهذا القسم.');
+          currentSection = null;
+          return;
+        }
+        modal.style.display = 'none';
+        mainActions.style.display = 'none';
+        if(currentSection === 'sales'){ openSalesUI(); }
+        else if(currentSection === 'verify'){ openVerifyUI(); }
+      } else {
+        currentSection = null;
+        userInfo.innerHTML = '';
+        hideAllPanels();
+      }
+    });
+
+    function hideAllPanels(){
+      salesPanel.style.display = 'none';
+      verifyPanel.style.display = 'none';
+      mainActions.style.display = 'block';
+      if(unsubscribeSalesList){ unsubscribeSalesList(); unsubscribeSalesList = null; }
+    }
+
+    // مبيعات
+    function openSalesUI(){
+      hideAllPanels();
+      mainActions.style.display = 'none';
+      salesPanel.style.display = 'block';
+      salesEmailShow.textContent = SALES_EMAIL;
+    }
+    btnSaleSubmit.addEventListener('click', async ()=>{
+      const name = saleName.value.trim();
+      const ram = saleRam.value.trim();
+      const priceRaw = salePrice.value;
+      const price = Number(priceRaw);
+      if(!name || !ram || !price || isNaN(price) || price <= 0){
+        alert('أدخل بيانات صحيحة (الاسم، الرام، السعر رقمي).'); return;
+      }
+      try{
+        await addDoc(collection(db,'sales'), {
+          name, ram, price, sellerEmail: SALES_EMAIL, verified: false, createdAt: serverTimestamp()
+        });
+        showTick();
+        saleName.value = ''; saleRam.value = ''; salePrice.value = '';
+      }catch(err){
+        console.error(err); alert('خطأ عند الإرسال: '+(err.message||err.code));
+      }
+    });
+    btnSalesLogout.addEventListener('click', async ()=>{
+      await signOut(auth);
+      currentSection = null;
+      hideAllPanels();
+    });
+
+    // التحقق مع شريط الإحصائيات
+    function openVerifyUI(){
+      hideAllPanels();
+      mainActions.style.display = 'none';
+      verifyPanel.style.display = 'block';
+      verifyEmailShow.textContent = VERIFY_EMAIL;
+      const q = query(collection(db,'sales'), orderBy('createdAt','desc'));
+      if(unsubscribeSalesList) unsubscribeSalesList();
+      unsubscribeSalesList = onSnapshot(q, snapshot=>{
+        const allItems = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderVerifyList(allItems);
+        // === شريط الإحصائيات أعلى قسم التحقق (المعتمدة فقط) ===
+        const verifiedItems = allItems.filter(it => it.verified === true);
+        let count = verifiedItems.length;
+        let sum = verifiedItems.reduce((total, it) => total + Number(it.price || 0), 0);
+        verifyStatCount.textContent = count.toLocaleString('ar-EG');
+        verifyStatSum.textContent   = sum.toLocaleString('ar-EG');
+      }, err => {console.error('listen verify err', err);});
+    }
+    function renderVerifyList(items){
+      verifyList.innerHTML = '';
+      if(items.length===0){ verifyList.innerHTML = '<div class="small">لا توجد مبيعات حتى الآن.</div>'; return; }
+      items.forEach(it=>{
+        const div = document.createElement('div'); div.className = 'item';
+        const meta = document.createElement('div'); meta.style.flex='1';
+        const t = document.createElement('div'); t.style.fontWeight='600'; t.textContent = it.name || '-';
+        const s = document.createElement('div'); s.className='small'; s.textContent = `رام: ${it.ram || '-'} — سعر: ${it.price || 0}`;
+        const dt = document.createElement('div'); dt.className='small'; dt.textContent = it.createdAt && it.createdAt.toDate ? new Date(it.createdAt.toDate()).toLocaleString('ar-EG') : '';
+        meta.appendChild(t); meta.appendChild(s); meta.appendChild(dt);
+        div.appendChild(meta);
+        const status = document.createElement('div'); status.className = 'badge ' + (it.verified ? 'verified' : 'unverified'); status.textContent = it.verified ? 'معتمد' : 'قيد الانتظار';
+        div.appendChild(status);
+        if(!it.verified){
+          const btn = document.createElement('button'); btn.textContent='اعتماد'; btn.style.marginRight='8px';
+          btn.addEventListener('click', async ()=>{
+            if(!confirm('هل تريد اعتماد هذه المبيعة؟')) return;
+            try{
+              await updateDoc(doc(db,'sales',it.id), { verified: true, verifiedBy: VERIFY_EMAIL, verifiedAt: serverTimestamp() });
+              showTick('تم اعتماد المبيعة');
+            }catch(err){ console.error(err); alert('خطأ في الاعتماد: '+(err.message||err.code)); }
+          });
+          div.appendChild(btn);
+        }
+        verifyList.appendChild(div);
+      });
+    }
+    btnVerifyLogout.addEventListener('click', async ()=>{
+      await signOut(auth);
+      currentSection = null;
+      hideAllPanels();
+    });
+
+    // نجاح
+    function showTick(msg){
+      tickModal.style.display = 'block';
+      setTimeout(()=>{ tickModal.style.display = 'none'; }, 1500);
+    }
+
+    (async ()=>{
+      try{
+        const u = auth.currentUser;
+        if(u){ await signOut(auth); }
+      }catch(e){ console.warn('initial signout err', e); }
+    })();
+  </script>
+</body>
+</html>
